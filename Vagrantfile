@@ -1,23 +1,22 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
-VAGRANTFILE_API_VERSION = "2"
+BOX_IMAGE = "generic/ubuntu1804"
+NETWORK = "192.168.50"
+MINIONS = 2
 
-Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  os = "bento/ubuntu-18.04"
-  net_ip = "192.168.50"
+Vagrant.configure("2") do |config|
 
+  # salt master
   config.vm.define :master, primary: true do |master_config|
-    master_config.vm.provider "virtualbox" do |vb|
-        vb.memory = "2048"
-        vb.cpus = 1
-        vb.name = "master"
+
+    master_config.vm.provider "libvirt" do |libvirt|
+      libvirt.memory = "2048"
     end
-    
-    master_config.vm.box = "#{os}"
-    master_config.vm.host_name = 'saltmaster.local'
-    master_config.vm.network "private_network", ip: "#{net_ip}.10"
+
+    master_config.vm.box = BOX_IMAGE
+    master_config.vm.hostname = "saltmaster"
+    master_config.vm.network "private_network", ip: "#{NETWORK}.10"
     master_config.vm.synced_folder "saltstack/salt/", "/srv/salt"
     master_config.vm.synced_folder "saltstack/pillar/", "/srv/pillar"
 
@@ -41,31 +40,33 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
   end
 
+  # salt minions...
+  (1..MINIONS).each do |i| 
+  config.vm.define "minion#{i}" do |node|
+    node.vm.box = BOX_IMAGE
+    node.vm.hostname = "minion#{i}"
+    node.vm.network "private_network", ip: "#{NETWORK}.#{10+i}"
 
-  [
-    ["minion1",    "#{net_ip}.11",    "1024",    os ],
-    ["minion2",    "#{net_ip}.12",    "1024",    os ],
-  ].each do |vmname,ip,mem,os|
-    config.vm.define "#{vmname}" do |minion_config|
-      minion_config.vm.provider "virtualbox" do |vb|
-          vb.memory = "#{mem}"
-          vb.cpus = 1
-          vb.name = "#{vmname}"
-      end
-
-      minion_config.vm.box = "#{os}"
-      minion_config.vm.hostname = "#{vmname}"
-      minion_config.vm.network "private_network", ip: "#{ip}"
-
-      minion_config.vm.provision :salt do |salt|
-        salt.minion_config = "saltstack/etc/#{vmname}"
-        salt.minion_key = "saltstack/keys/#{vmname}.pem"
-        salt.minion_pub = "saltstack/keys/#{vmname}.pub"
-        salt.install_type = "stable"
-        salt.verbose = true
-        salt.colorize = true
-        salt.bootstrap_options = "-P -c /tmp"
-      end
+    node.vm.provision :salt do |salt|
+      salt.minion_config = "saltstack/etc/minion#{i}"
+      salt.minion_key = "saltstack/keys/minion#{i}.pem"
+      salt.minion_pub = "saltstack/keys/minion#{i}.pub"
+      salt.install_type = "stable"
+      salt.verbose = true
+      salt.colorize = true
+      salt.bootstrap_options = "-P -c /tmp"
     end
+  end
+end
+
+  # default/global provider options...
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.driver = "kvm"
+    libvirt.connect_via_ssh = false
+    libvirt.username = "root"
+    libvirt.storage_pool_name = "default"
+    libvirt.memory = 1024
+    libvirt.cpus = 2
+    libvirt.cputopology :sockets => '1', :cores => '2', :threads => '1'
   end
 end
