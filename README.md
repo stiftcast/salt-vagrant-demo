@@ -3,7 +3,6 @@
 A Salt Demo using Vagrant.
 
 ## Requirements
-
 This demo requires `libvirt` with at least one supported hypervisor, this guide will be KVM/QEMU specific.
 In addition, the [vagrant-libvirt](https://github.com/vagrant-libvirt/vagrant-libvirt) plugin is needed to utilize libvirt:
 ```sh
@@ -17,6 +16,7 @@ git clone https://github.com/stiftcast/salt-vagrant-demo.git
 cd salt-vagrant-demo
 vagrant up
 ```
+To be able to spin up VMs using libvirt as a non-root user, it may be required to follow the instructions [here.](https://computingforgeeks.com/use-virt-manager-as-non-root-user/)
 
 This will download a generic Ubuntu 18.04 image and create three virtual
 machines for you. One will be a Salt Master named `master` and two will be Salt
